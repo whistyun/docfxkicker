@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netcoreapp3.1;net461</TargetFrameworks>
+    <LangVersion>8</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NuGet.Protocol" Version="5.11.0" />
+  </ItemGroup>
+</Project>
