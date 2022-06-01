@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>netcoreapp3.1;net461</TargetFrameworks>
@@ -14,5 +14,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NuGetHelper\NuGetHelper.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="repos\" />
+    <None Update="repos\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

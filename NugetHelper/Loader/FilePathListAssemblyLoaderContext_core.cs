@@ -11,17 +11,25 @@ namespace NuGetHelper.Loader
     public class FilePathListAssemblyLoaderContext : AssemblyLoadContext
     {
         private Dictionary<string, string> _pathes;
-        private ConcurrentDictionary<string, Assembly> _loaded;
+        private ConcurrentDictionary<string, Assembly?> _loaded;
 
         public FilePathListAssemblyLoaderContext(string[] dllFilepaths) : base("NuGetHelper")
         {
-            _pathes = dllFilepaths.ToDictionary(p => AssemblyName.GetAssemblyName(p).Name, p => p);
-            _loaded = new ConcurrentDictionary<string, Assembly>();
+            _pathes = new();
+            foreach (var dllpath in dllFilepaths)
+            {
+                var asmName = AssemblyName.GetAssemblyName(dllpath).Name;
+                if (asmName is null) continue;
+
+                _pathes[asmName] = dllpath;
+            }
+
+            _loaded = new();
 
             this.Resolving += FilePathListAssemblyLoaderContext_Resolving;
         }
 
-        private Assembly FilePathListAssemblyLoaderContext_Resolving(AssemblyLoadContext loader, AssemblyName assemblyName)
+        private Assembly? FilePathListAssemblyLoaderContext_Resolving(AssemblyLoadContext loader, AssemblyName assemblyName)
         {
             try
             {
@@ -29,12 +37,14 @@ namespace NuGetHelper.Loader
             }
             catch
             {
-                Assembly result = _loaded.GetOrAdd(assemblyName.Name, name =>
-                 {
-                     return _pathes.TryGetValue(name, out var path) ?
-                         loader.LoadFromAssemblyPath(path) :
-                         null;
-                 });
+                var asmName = assemblyName.Name;
+                if (asmName is null) return null;
+
+                var result = _loaded.GetOrAdd(
+                                 asmName,
+                                 name => _pathes.TryGetValue(name, out var path) ?
+                                              loader.LoadFromAssemblyPath(path) :
+                                              null);
 
                 return result;
             }

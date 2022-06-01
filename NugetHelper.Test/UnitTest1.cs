@@ -1,5 +1,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NuGet.Frameworks;
+using NuGet.Packaging.Core;
+using NuGet.Versioning;
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -8,71 +12,93 @@ namespace NuGetHelper.test
     [TestClass]
     public class UnitTest1
     {
-#if NETCOREAPP
-        private const string Framework = "netcoreapp3.1";
-#elif NETFRAMEWORK
-        private const string Framework = "net461";
-#endif
-
         [TestMethod]
-        public void FindLatestIdentity()
+        public void SearchLatestVersion()
         {
-            var repo = new URepository();
-            var idTask = repo.FindLatestIdentityAsync("Markdown.Avalonia");
+            var repoUri = Path.GetFullPath("./repos");
 
-            idTask.Wait();
-            Assert.AreEqual(TaskStatus.RanToCompletion, idTask.Status);
-        }
+            var repo = new URepository(repoUri);
 
-        [TestMethod]
-        public void FindAsms()
-        {
-            var repo = new URepository();
-            var idTask = repo.FindLatestIdentityAsync("Markdown.Avalonia");
-
-            idTask.Wait();
-
-            var asmTask = repo.FindAssemblyAsync(idTask.Result, Framework);
-
-            asmTask.Wait();
-            Assert.AreEqual(TaskStatus.RanToCompletion, asmTask.Status);
-            Assert.AreEqual(2, asmTask.Result.Count());
-
-            var asm = asmTask.Result
-                             .Where(a => a.GetName().Name == "Markdown.Avalonia")
-                             .First();
-
-            var types = asm.DefinedTypes;
-
-            var type = asm.GetType("Markdown.Avalonia.MarkdownScrollViewer");
-            Assert.IsNotNull(type);
-        }
-
-        [TestMethod]
-        public void FindAsms2()
-        {
-            var repo = new URepository();
-            var idTask = repo.FindLatestIdentityAsync("Markdown.Xaml");
-            idTask.Wait();
-
-#if NETCOREAPP
-            try
             {
-                var asmTask = repo.DownloadWithDependenciesAsync(idTask.Result, Framework);
-                asmTask.Wait();
-                Assert.Fail();
-            }
-            catch (AggregateException e)
-            {
-                Assert.AreEqual("not supported package", e.InnerException.Message);
+                var idTask = repo.SearchLatestIdentityAsync("whistyun.dummy.latestver");
+                idTask.Wait();
+                Assert.AreEqual(new NuGetVersion("1.3.0"), idTask.Result.Version);
             }
 
-#elif NETFRAMEWORK
-            var asmTask = repo.DownloadWithDependenciesAsync(idTask.Result, Framework);
+            {
+                var idTask = repo.SearchLatestIdentityAsync("whistyun.dummy.latestver", true);
+                idTask.Wait();
+                Assert.AreEqual(new NuGetVersion("1.4.0-a"), idTask.Result.Version);
+            }
 
-            asmTask.Wait();
-            Assert.AreEqual(TaskStatus.RanToCompletion, asmTask.Status);
-            Assert.AreEqual(1, asmTask.Result.Count());
+            {
+                var range = new VersionRange(
+                    minVersion: new NuGetVersion("1.0.0"),
+                    maxVersion: new NuGetVersion("1.1.0"));
+
+                var idTask = repo.SearchLatestIdentityAsync("whistyun.dummy.latestver", range);
+                idTask.Wait();
+                Assert.AreEqual(new NuGetVersion("1.0.2"), idTask.Result.Version);
+            }
+        }
+
+
+        [TestMethod]
+        public void FailedSearchLatestVersion()
+        {
+            var repoUri = Path.GetFullPath("./repos");
+
+            var repo = new URepository(repoUri);
+
+            {
+                var idTask = repo.SearchLatestIdentityAsync("whistyun.dummy.latestver.notfound");
+                idTask.Wait();
+                Assert.IsFalse(idTask.Result.HasVersion);
+            }
+
+            {
+                var version = repo.SearchLatestVersionAsync("whistyun.dummy.latestver.notfound");
+                version.Wait();
+                Assert.IsNull(version.Result);
+            }
+        }
+
+
+        [TestMethod]
+        public void DownloadTest()
+        {
+            var repoUri = Path.GetFullPath("./repos");
+
+            var repo = new URepository(repoUri);
+
+#if NETCOREAPP
+            var framework = NuGetFramework.Parse("netcoreapp3.1");
+
+            var identityTask = repo.SearchLatestIdentityAsync("whistyun.dummy.frm1");
+            identityTask.Wait();
+            var depsTask = repo.FindPackageWithDependenciesAsync(identityTask.Result, framework);
+            depsTask.Wait();
+
+            var actual = new string[] { "whistyun.dummy.frm1", "whistyun.dummy.subfrm_core" };
+            foreach (var id in depsTask.Result.Select(asm => asm.Identity.Id))
+            {
+                Assert.IsTrue(actual.Contains(id), id);
+            }
+
+
+#elif NETFRAMEWORK
+            var framework = NuGetFramework.Parse("net461");
+
+            var identityTask = repo.SearchLatestIdentityAsync("whistyun.dummy.frm1");
+            identityTask.Wait();
+            var depsTask = repo.FindPackageWithDependenciesAsync(identityTask.Result, framework);
+            depsTask.Wait();
+
+            var actual = new string[] { "whistyun.dummy.frm1", "whistyun.dummy.subfrm_frmwk" };
+            foreach (var id in depsTask.Result.Select(asm => asm.Identity.Id))
+            {
+                Assert.IsTrue(actual.Contains(id), id);
+            }
 #endif
         }
     }
