@@ -22,10 +22,32 @@ namespace docfxkicker
 {
     class PluginLoader
     {
-        public const string Framework = "netcoreapp3.1";
+        private URepositories _repos;
 
-        public static void Load(string packageId) => Load(packageId, null);
-        public static IEnumerable<ISubCommand> Load(string packageId, string versionTxt)
+        public const string Framework = "net472";
+
+        public PluginLoader()
+        {
+            _repos = new URepositories();
+        }
+
+        public PluginLoader(PluginLoader copyFrom)
+        {
+            _repos = new URepositories(copyFrom._repos);
+        }
+
+        public void AddRepoitory(string url) => _repos.AddRepository(url);
+
+        /// <summary>
+        /// Download nuget package to get ISubCommand.
+        /// </summary>
+        /// <param name="packageId">nuget package id</param>
+        public IEnumerable<ISubCommand> Load(string packageId) => Load(packageId, null);
+
+        /// <summary>
+        /// Download nuget package to get ISubCommand.
+        /// </summary>
+        public IEnumerable<ISubCommand> Load(string packageId, string? versionTxt)
         {
             Task<TypeInfo[]> typesTask = LoadAsync(packageId, versionTxt);
             typesTask.Wait();
@@ -47,32 +69,39 @@ namespace docfxkicker
             return results;
         }
 
-        public static LocalPackageInfo SetupDocfxConsole()
+        private async Task<TypeInfo[]> LoadAsync(string packageId, string? versionTxt)
         {
-            var repo = new URepository();
-            var identity = new PackageIdentity("docfx.console", new NuGetVersion("2.58.8"));
+            PackageIdentity identity = new(packageId, versionTxt is not null ? new NuGetVersion(versionTxt) : null);
 
-            repo.DownloadPackageAsync(identity).Wait();
+            var asms = await _repos.FindAssemblyAsync(identity, Framework);
 
-            return repo.FindLocalPackage(identity);
+
+            return asms is null ?
+                    new TypeInfo[0] :
+                    Filter(asms);
         }
 
-
-        private static async Task<TypeInfo[]> LoadAsync(string packageId, string versionTxt)
+        private TypeInfo[] Filter(Assembly[] asms)
         {
-            var repo = new URepository();
+            return asms.SelectMany(asm => asm.DefinedTypes)
+                       .Where(tinf => !(tinf.IsValueType | tinf.IsEnum | tinf.IsInterface | tinf.IsGenericType))
+                       .Where(tinf => typeof(ISubCommand).IsAssignableFrom(tinf))
+                       .ToArray();
+        }
 
-            var identity = versionTxt is null ?
-                await repo.FindLatestIdentityAsync(packageId) :
-                new PackageIdentity(packageId, NuGetVersion.Parse(versionTxt));
+        /// <summary>
+        /// Download docfx.console
+        /// </summary>
+        /// <returns>downloaded docfx.console package</returns>
+        public static LocalPackageInfo? SetupDocfxConsole()
+        {
+            var repo = new URepositories(URepository.NuGetOrgUrl);
+            var identity = new PackageIdentity("docfx.console", new NuGetVersion("2.59.1"));
+            var framework = NuGetFramework.Parse(Framework);
 
-            Assembly[] asms = await repo.FindAssemblyAsync(identity, Framework);
-            TypeInfo[] types = asms.SelectMany(asm => asm.DefinedTypes)
-                                   .Where(tinf => !(tinf.IsValueType | tinf.IsEnum | tinf.IsInterface | tinf.IsGenericType))
-                                   .Where(tinf => typeof(ISubCommand).IsAssignableFrom(tinf))
-                                   .ToArray();
+            var result = repo.FindPackageWithDependenciesAsync(identity, framework).Result;
 
-            return types;
+            return result?.Primary?.RawInfo;
         }
     }
 }

@@ -1,0 +1,21 @@
+﻿Usage: docfxkicker.exe [subcommand] [option]
+
+subcommands:
+
+ init  [projectDir]
+
+    emit config file to projectdir.
+
+
+
+ build [toolprefix]  [configFilepath]  [logFilepath | logFileName]  [templateDir]
+
+    execute config file
+
+    options:
+
+       toolprefix        command to execute docfx.exe (eg. mono)
+
+       configFilepath    docfxkicker config filepath
+
+       logFilepath / logFileName

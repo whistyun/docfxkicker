@@ -21,14 +21,11 @@ namespace NuGetHelper
     {
         public const string NuGetOrgUrl = "https://api.nuget.org/v3/index.json";
 
-        private ILogger _logger;
-        private SourceCacheContext _cache;
-        private SourceRepository _repository;
-        private string _globalPackagesFolder;
-
-        private CancellationToken _cancel;
-
-        private FrameworkReducer _reducer;
+        private readonly ILogger _logger;
+        private readonly LocalPackage _local;
+        private readonly SourceCacheContext _cache;
+        private readonly SourceRepository _repository;
+        private readonly CancellationToken _cancel;
 
 
         public URepository() :
@@ -43,13 +40,11 @@ namespace NuGetHelper
 
         public URepository(string repositorySource, ILogger logger)
         {
+            _local = new LocalPackage(logger);
             _logger = logger;
             _cache = new SourceCacheContext();
             _repository = Repository.Factory.GetCoreV3(repositorySource);
             _cancel = new CancellationToken();
-            _reducer = new FrameworkReducer();
-
-            _globalPackagesFolder = SettingsUtility.GetGlobalPackagesFolder(Settings.LoadDefaultSettings(root: null));
         }
 
         #region SearchLatestVersionAsync
@@ -62,7 +57,7 @@ namespace NuGetHelper
         /// <returns>the latest version</returns>
         public Task<NuGetVersion?> SearchLatestVersionAsync(string packageId, bool includePrerelease = false)
         {
-            CheckNull(nameof(packageId), packageId);
+            Check.NotNull(nameof(packageId), packageId);
 
             return PrivateSearchLatestVersionAsync(packageId, VersionRange.All, _cancel, includePrerelease);
         }
@@ -76,8 +71,8 @@ namespace NuGetHelper
         /// <returns>the latest version</returns>
         public Task<NuGetVersion?> SearchLatestVersionAsync(string packageId, VersionRange range, bool includePrerelease = false)
         {
-            CheckNull(nameof(packageId), packageId);
-            CheckNull(nameof(range), range);
+            Check.NotNull(nameof(packageId), packageId);
+            Check.NotNull(nameof(range), range);
 
             return PrivateSearchLatestVersionAsync(packageId, range, _cancel, includePrerelease);
         }
@@ -91,8 +86,8 @@ namespace NuGetHelper
         /// <returns>the latest version</returns>
         public Task<NuGetVersion?> SearchLatestVersionAsync(string packageId, VersionRange range, CancellationToken token, bool includePrerelease = false)
         {
-            CheckNull(nameof(packageId), packageId);
-            CheckNull(nameof(range), range);
+            Check.NotNull(nameof(packageId), packageId);
+            Check.NotNull(nameof(range), range);
 
             return PrivateSearchLatestVersionAsync(packageId, range, token, includePrerelease);
         }
@@ -127,7 +122,7 @@ namespace NuGetHelper
         /// <param name="includePrerelease">Whether to include the pre-release version. true: include, false: exclude.</param>
         public Task<PackageIdentity> SearchLatestIdentityAsync(string packageId, bool includePrerelease = false)
         {
-            CheckNull(nameof(packageId), packageId);
+            Check.NotNull(nameof(packageId), packageId);
 
             return PrivateSearchLatestIdentityAsync(packageId, VersionRange.All, _cancel, includePrerelease);
         }
@@ -140,8 +135,8 @@ namespace NuGetHelper
         /// <param name="includePrerelease">Whether to include the pre-release version. true: include, false: exclude.</param>
         public Task<PackageIdentity> SearchLatestIdentityAsync(string packageId, VersionRange range, bool includePrerelease = false)
         {
-            CheckNull(nameof(packageId), packageId);
-            CheckNull(nameof(range), range);
+            Check.NotNull(nameof(packageId), packageId);
+            Check.NotNull(nameof(range), range);
 
             return PrivateSearchLatestIdentityAsync(packageId, range, _cancel, includePrerelease);
         }
@@ -154,8 +149,8 @@ namespace NuGetHelper
         /// <param name="includePrerelease">Whether to include the pre-release version. true: include, false: exclude.</param>
         public Task<PackageIdentity> SearchLatestIdentityAsync(string packageId, VersionRange range, CancellationToken token, bool includePrerelease = false)
         {
-            CheckNull(nameof(packageId), packageId);
-            CheckNull(nameof(range), range);
+            Check.NotNull(nameof(packageId), packageId);
+            Check.NotNull(nameof(range), range);
 
             return PrivateSearchLatestIdentityAsync(packageId, range, token, includePrerelease);
         }
@@ -168,87 +163,27 @@ namespace NuGetHelper
 
         #endregion
 
-        #region FindLocalPackage
-
-        /// <exception cref="PackageNotFoundException">The specified package does not exist in the repository.</exception>
-        public LocalPackageInfo? FindLocalPackage(string packageId, bool includePrerelease = false)
-            => FindLocalPackage(packageId, VersionRange.All, includePrerelease);
-
-        /// <exception cref="PackageNotFoundException">The specified package does not exist in the repository.</exception>
-        public LocalPackageInfo? FindLocalPackage(string packageId, VersionRange range, bool includePrerelease = false)
-        {
-            CheckNull(nameof(packageId), packageId);
-            CheckNull(nameof(range), range);
-
-            IEnumerable<LocalPackageInfo> infos = LocalFolderUtility.GetPackagesV3(_globalPackagesFolder, packageId, _logger);
-
-            if (!includePrerelease)
-            {
-                infos = infos.Where(p => !p.Nuspec.GetVersion().IsPrerelease);
-            }
-
-            foreach (var info in infos.OrderByDescending(p => p.Nuspec.GetVersion()))
-            {
-                if (range.Satisfies(info.Nuspec.GetVersion()))
-                {
-                    return info;
-                }
-            }
-
-            return null;
-        }
-
-        /// <exception cref="PackageNotFoundException">The specified package does not exist in the repository.</exception>
-        public LocalPackageInfo? FindLocalPackage(string packageId, string version)
-        {
-            CheckNull(nameof(packageId), packageId);
-            CheckNull(nameof(version), version);
-
-            var identity = new PackageIdentity(packageId, new NuGetVersion(version));
-            return LocalFolderUtility.GetPackageV3(_globalPackagesFolder, identity, _logger);
-        }
-
-        /// <exception cref="PackageNotFoundException">The specified package does not exist in the repository.</exception>
-        public LocalPackageInfo? FindLocalPackage(string packageId, NuGetVersion version)
-        {
-            CheckNull(nameof(packageId), packageId);
-            CheckNull(nameof(version), version);
-
-            var identity = new PackageIdentity(packageId, version);
-            return LocalFolderUtility.GetPackageV3(_globalPackagesFolder, identity, _logger);
-        }
-
-        /// <exception cref="PackageNotFoundException">The specified package does not exist in the repository.</exception>
-        public LocalPackageInfo? FindLocalPackage(PackageIdentity identity)
-        {
-            CheckNull(nameof(identity), identity);
-
-            return LocalFolderUtility.GetPackageV3(_globalPackagesFolder, identity, _logger);
-        }
-
-        #endregion
-
         #region DownloadPackageAsync
 
         public Task<UDownloadResult> DownloadPackageAsync(string packageId)
         {
-            CheckNull(nameof(packageId), packageId);
+            Check.NotNull(nameof(packageId), packageId);
 
             return PrivateDownloadPackageAsync(packageId, VersionRange.All);
         }
 
         public Task<UDownloadResult> DownloadPackageAsync(string packageId, VersionRange range)
         {
-            CheckNull(nameof(packageId), packageId);
-            CheckNull(nameof(range), range);
+            Check.NotNull(nameof(packageId), packageId);
+            Check.NotNull(nameof(range), range);
 
             return PrivateDownloadPackageAsync(packageId, range);
         }
 
         public Task<UDownloadResult> DownloadPackageAsync(string packageId, string version)
         {
-            CheckNull(nameof(packageId), packageId);
-            CheckNull(nameof(version), version);
+            Check.NotNull(nameof(packageId), packageId);
+            Check.NotNull(nameof(version), version);
 
             var identity = new PackageIdentity(packageId, new NuGetVersion(version));
             return PrivateDownloadPackageAsync(identity, _cancel);
@@ -256,8 +191,8 @@ namespace NuGetHelper
 
         public Task<UDownloadResult> DownloadPackageAsync(string packageId, NuGetVersion version)
         {
-            CheckNull(nameof(packageId), packageId);
-            CheckNull(nameof(version), version);
+            Check.NotNull(nameof(packageId), packageId);
+            Check.NotNull(nameof(version), version);
 
             var identity = new PackageIdentity(packageId, version);
             return PrivateDownloadPackageAsync(identity, _cancel);
@@ -265,14 +200,14 @@ namespace NuGetHelper
 
         public Task<UDownloadResult> DownloadPackageAsync(PackageIdentity identity)
         {
-            CheckNull(nameof(identity), identity);
+            Check.NotNull(nameof(identity), identity);
 
             return PrivateDownloadPackageAsync(identity, _cancel);
         }
 
         public Task<UDownloadResult> DownloadPackageAsync(PackageIdentity identity, CancellationToken token)
         {
-            CheckNull(nameof(identity), identity);
+            Check.NotNull(nameof(identity), identity);
 
             return PrivateDownloadPackageAsync(identity, token);
         }
@@ -302,7 +237,7 @@ namespace NuGetHelper
             var result = await downloader.GetDownloadResourceResultAsync(
                 identity,
                 context,
-                _globalPackagesFolder,
+                _local.GlobalPackagesFolder,
                 _logger,
                 token);
 
@@ -311,7 +246,7 @@ namespace NuGetHelper
                 return new UDownloadResult(identity, result.Status);
             }
 
-            var localPack = FindLocalPackage(identity);
+            var localPack = _local.FindLocalPackage(identity);
 
             if (localPack is null)
             {
@@ -319,13 +254,13 @@ namespace NuGetHelper
                     result.PackageSource,
                     identity,
                     result.PackageStream,
-                    _globalPackagesFolder,
+                    _local.GlobalPackagesFolder,
                     context.ParentId,
                     context.ClientPolicyContext,
                     _logger,
                     token);
 
-                localPack = FindLocalPackage(identity);
+                localPack = _local.FindLocalPackage(identity);
             }
 
             if (localPack is null)
@@ -340,13 +275,12 @@ namespace NuGetHelper
 
         #endregion
 
-
         #region FindPackageAsync
 
         public Task<LocalPackageInfo?> FindPackageAsync(string packageId, NuGetVersion version)
         {
-            CheckNull(nameof(packageId), packageId);
-            CheckNull(nameof(version), version);
+            Check.NotNull(nameof(packageId), packageId);
+            Check.NotNull(nameof(version), version);
 
             var identity = new PackageIdentity(packageId, version);
             return PrivateFindPackageAsync(identity, _cancel);
@@ -354,7 +288,7 @@ namespace NuGetHelper
 
         public Task<LocalPackageInfo?> FindPackageAsync(PackageIdentity identity)
         {
-            CheckNull(nameof(identity), identity);
+            Check.NotNull(nameof(identity), identity);
 
             return PrivateFindPackageAsync(identity, _cancel);
         }
@@ -371,7 +305,7 @@ namespace NuGetHelper
                 identity = identity2;
             }
 
-            var info = FindLocalPackage(identity);
+            var info = _local.FindLocalPackage(identity);
             if (info is not null)
                 return info;
 
@@ -379,162 +313,5 @@ namespace NuGetHelper
         }
 
         #endregion
-
-
-
-        #region DownloadWithDependenciesAsync
-
-        public Task<UPackageInfo[]?> FindPackageWithDependenciesAsync(PackageIdentity identity, string requestedFramework)
-        {
-            CheckNull(nameof(identity), identity);
-            CheckNull(nameof(requestedFramework), requestedFramework);
-
-            return PrivateDownloadWithDependenciesAsync(identity, NuGetFramework.Parse(requestedFramework), _cancel);
-        }
-
-        public Task<UPackageInfo[]?> FindPackageWithDependenciesAsync(PackageIdentity identity, NuGetFramework requestedFramework)
-        {
-            CheckNull(nameof(identity), identity);
-            CheckNull(nameof(requestedFramework), requestedFramework);
-
-            return PrivateDownloadWithDependenciesAsync(identity, requestedFramework, _cancel);
-        }
-
-        public Task<UPackageInfo[]?> FindPackageWithDependenciesAsync(PackageIdentity identity, NuGetFramework requestedFramework, CancellationToken token)
-        {
-            CheckNull(nameof(identity), identity);
-            CheckNull(nameof(requestedFramework), requestedFramework);
-
-            return PrivateDownloadWithDependenciesAsync(identity, requestedFramework, token);
-        }
-
-        private async Task<UPackageInfo[]?> PrivateDownloadWithDependenciesAsync(PackageIdentity identity, NuGetFramework requestedFramework, CancellationToken token)
-        {
-            var package = await FindPackageAsync(identity);
-            if (package is null)
-                return null;
-
-            var asmpaths = ParseAssemblyPaths(package, _reducer, requestedFramework);
-            if (asmpaths is null)
-            {
-                _logger.LogWarning($"'{identity}' dose not support {requestedFramework}");
-                return null;
-            }
-
-            var result = new List<UPackageInfo>
-            {
-                new UPackageInfo(package,  requestedFramework, asmpaths)
-            };
-
-            var depGroups = package.Nuspec.GetDependencyGroups().ToArray();
-            if (depGroups.Length == 0)
-                return result.ToArray();
-
-            var match = _reducer.GetNearest(requestedFramework, depGroups.Select(grp => grp.TargetFramework));
-            if (match is null)
-            {
-                _logger.LogWarning("not supported package");
-                return null;
-            }
-
-            var depTasks = depGroups
-                       .Where(grp => Object.Equals(grp.TargetFramework, match))
-                       .First()
-                       .Packages
-                       .Select(async (pkg) =>
-                       {
-                           var version = await SearchLatestVersionAsync(pkg.Id, pkg.VersionRange, token);
-                           if (version is null) return null;
-
-                           var identity = new PackageIdentity(pkg.Id, version);
-
-                           var result = await FindPackageWithDependenciesAsync(identity, requestedFramework, token);
-                           if (result is null) return null;
-
-                           return result;
-                       })
-                       .ToArray();
-
-            foreach (var depTask in depTasks)
-            {
-                var dep = await depTask;
-                if (dep is null) return null;
-
-                result.AddRange(dep);
-            }
-
-            return result.Distinct().ToArray();
-        }
-
-        private IReadOnlyList<string>? ParseAssemblyPaths(LocalPackageInfo rawInfo, FrameworkReducer reducer, NuGetFramework framework)
-        {
-            var directory = Path.GetDirectoryName(rawInfo.Path);
-
-            var grps = rawInfo.GetReader().GetLibItems();
-
-            if (grps.Count() == 0)
-            {
-                return new List<string>().AsReadOnly();
-            }
-            else
-            {
-                var matched = reducer.GetNearest(framework, grps.Select(grp => grp.TargetFramework));
-                var matchGrp = grps.Where(grp => Object.Equals(grp.TargetFramework, matched))
-                                   .FirstOrDefault();
-
-                if (matchGrp is null)
-                    return null;
-
-                return matchGrp.Items
-                               .Where(itm => Path.GetExtension(itm).ToLower().Equals(".dll"))
-                               .Select(itm => Path.Combine(directory!, itm))
-                               .ToList()
-                               .AsReadOnly();
-            }
-        }
-
-        #endregion
-
-        #region FindAssemblyAsync
-
-        public Task<Assembly[]?> FindAssemblyAsync(PackageIdentity identity, string requestedFramework)
-        {
-            CheckNull(nameof(identity), identity);
-            CheckNull(nameof(requestedFramework), requestedFramework);
-
-            return PrivateFindAssemblyAsync(identity, NuGetFramework.Parse(requestedFramework));
-        }
-
-        public Task<Assembly[]?> FindAssemblyAsync(PackageIdentity identity, NuGetFramework framework)
-        {
-            CheckNull(nameof(identity), identity);
-            CheckNull(nameof(framework), framework);
-
-            return PrivateFindAssemblyAsync(identity, framework);
-        }
-
-        private async Task<Assembly[]?> PrivateFindAssemblyAsync(PackageIdentity identity, NuGetFramework framework)
-        {
-            var infos = await FindPackageWithDependenciesAsync(identity, framework);
-            if (infos is null) return null;
-
-            var dlls = infos.SelectMany(inf => inf.AssemblyPaths).ToArray();
-
-            var targetInfo = infos.Where(info => Object.Equals(info.Identity, identity)).First();
-
-            var loader = new FilePathListAssemblyLoaderContext(dlls);
-
-            return targetInfo.AssemblyPaths
-                             .Select(path => loader.LoadFromAssemblyName(AssemblyName.GetAssemblyName(path)))
-                             .ToArray();
-        }
-
-        #endregion
-
-
-        private void CheckNull(string fieldNm, object value)
-        {
-            if (value is null) throw new ArgumentNullException(fieldNm);
-        }
     }
 }

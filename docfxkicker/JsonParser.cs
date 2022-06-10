@@ -3,39 +3,35 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace docfxkicker
 {
     class JsonParser : IEnumerable<ConfigNode>
     {
-        List<ConfigNode> nodes = new List<ConfigNode>();
+        List<ConfigNode> _nodes = new();
 
         public JsonParser(JObject json)
         {
-            JObject docfxConfig = new JObject();
+            // split the configuration node into docfx and docfxkicker.
+
+            DocFxConfigNode? lastNode = null;
 
             foreach (JProperty token in json.Properties())
             {
                 if (token.Name.StartsWith("@"))
                 {
-                    if (docfxConfig.Count != 0)
-                    {
-                        nodes.Add(new DocFxConfigNode(docfxConfig));
-                        docfxConfig = new JObject();
-                    }
-
-                    nodes.Add(new KickerConfigNode(token));
+                    _nodes.Add(new KickerConfigNode(token));
+                    lastNode =null;
                 }
                 else
                 {
-                    docfxConfig.Add(token.Name, token.Value);
-                }
-            }
+                    if (lastNode is null)
+                        _nodes.Add(lastNode=new());
 
-            if (docfxConfig.Count != 0)
-            {
-                nodes.Add(new DocFxConfigNode(docfxConfig));
+                    lastNode.Add(token);
+                }
             }
         }
 
@@ -45,7 +41,7 @@ namespace docfxkicker
             return new JsonParser(JObject.Parse(jsonText));
         }
 
-        public IEnumerator<ConfigNode> GetEnumerator() => nodes.GetEnumerator();
-        IEnumerator IEnumerable.GetEnumerator() => nodes.GetEnumerator();
+        public IEnumerator<ConfigNode> GetEnumerator() => _nodes.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => _nodes.GetEnumerator();
     }
 }

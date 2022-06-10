@@ -3,7 +3,6 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <TargetFramework>net472</TargetFramework>
-    <PackageId>docfxkicker.plugin</PackageId>
     <LangVersion>9</LangVersion>
     <Nullable>enable</Nullable>
     <Version>1.0.0</Version>
@@ -11,7 +10,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Csv" Version="2.0.84" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="YamlDotNet" Version="11.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\docfxkicker.plugin\docfxkicker.plugin.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Net.Http" />
   </ItemGroup>
 
 </Project>

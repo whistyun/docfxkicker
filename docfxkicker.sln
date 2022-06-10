@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31424.327
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32505.173
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "docfxkicker", "docfxkicker\docfxkicker.csproj", "{331AF52D-F279-4543-9DA9-B94AC7CA6BD1}"
 EndProject
@@ -9,7 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "docfxkicker.plugin", "docfx
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NuGetHelper", "NuGetHelper\NuGetHelper.csproj", "{BCA1B5F3-5A0D-460D-88D3-4EE5FF1A54C8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGetHelper.Test", "NuGetHelper.Test\NuGetHelper.Test.csproj", "{9B2B5E29-47D4-48C1-A55B-3639B25087D7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NuGetHelper.Test", "NuGetHelper.Test\NuGetHelper.Test.csproj", "{9B2B5E29-47D4-48C1-A55B-3639B25087D7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "docfxkicker_translationhelp", "docfxkicker_translationhelp\docfxkicker_translationhelp.csproj", "{EE4E488B-7D38-402B-AEC0-C6C074502E1A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{9B2B5E29-47D4-48C1-A55B-3639B25087D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9B2B5E29-47D4-48C1-A55B-3639B25087D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9B2B5E29-47D4-48C1-A55B-3639B25087D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE4E488B-7D38-402B-AEC0-C6C074502E1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE4E488B-7D38-402B-AEC0-C6C074502E1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE4E488B-7D38-402B-AEC0-C6C074502E1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE4E488B-7D38-402B-AEC0-C6C074502E1A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

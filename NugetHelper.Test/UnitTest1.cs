@@ -69,37 +69,27 @@ namespace NuGetHelper.test
         {
             var repoUri = Path.GetFullPath("./repos");
 
+            var repos = new URepositories();
             var repo = new URepository(repoUri);
+            repos.AddRepository(repo);
 
 #if NETCOREAPP
             var framework = NuGetFramework.Parse("netcoreapp3.1");
-
-            var identityTask = repo.SearchLatestIdentityAsync("whistyun.dummy.frm1");
-            identityTask.Wait();
-            var depsTask = repo.FindPackageWithDependenciesAsync(identityTask.Result, framework);
-            depsTask.Wait();
-
             var actual = new string[] { "whistyun.dummy.frm1", "whistyun.dummy.subfrm_core" };
-            foreach (var id in depsTask.Result.Select(asm => asm.Identity.Id))
-            {
-                Assert.IsTrue(actual.Contains(id), id);
-            }
-
-
 #elif NETFRAMEWORK
             var framework = NuGetFramework.Parse("net461");
+            var actual = new string[] { "whistyun.dummy.frm1", "whistyun.dummy.subfrm_frmwk" };
+#endif
 
             var identityTask = repo.SearchLatestIdentityAsync("whistyun.dummy.frm1");
             identityTask.Wait();
-            var depsTask = repo.FindPackageWithDependenciesAsync(identityTask.Result, framework);
+            var depsTask = repos.FindPackageWithDependenciesAsync(identityTask.Result, framework);
             depsTask.Wait();
 
-            var actual = new string[] { "whistyun.dummy.frm1", "whistyun.dummy.subfrm_frmwk" };
             foreach (var id in depsTask.Result.Select(asm => asm.Identity.Id))
             {
                 Assert.IsTrue(actual.Contains(id), id);
             }
-#endif
         }
     }
 }

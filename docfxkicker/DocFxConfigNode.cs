@@ -1,17 +1,25 @@
 ﻿using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace docfxkicker
 {
     class DocFxConfigNode : ConfigNode
     {
-        public JObject ConfigObject { get; }
+        public JObject ConfigObject { set; get; }
 
-        public DocFxConfigNode(JObject obj)
+        private DocFxConfigNode(JObject configObject)
         {
-            ConfigObject = obj;
+            ConfigObject = configObject;
+        }
+
+        public DocFxConfigNode() : this(new JObject())
+        {
+        }
+
+        public void Add(JProperty token) => ConfigObject.Add(token.Name, token.Value);
+
+        public override ConfigNode DeepClone()
+        {
+            return new DocFxConfigNode((JObject)ConfigObject.DeepClone());
         }
     }
 }

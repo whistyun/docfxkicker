@@ -6,6 +6,6 @@ namespace docfxkicker.plugin
     public interface ISubCommand
     {
         string CommandName { get; }
-        void Exec(JObject configNode, string baseDirectory);
+        void Exec(JToken configNode, string baseDirectory, Logger logger);
     }
 }

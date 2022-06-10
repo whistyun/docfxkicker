@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace docfxkicker
+﻿namespace docfxkicker
 {
-    class ConfigNode
+    abstract class ConfigNode
     {
+        public abstract ConfigNode DeepClone();
     }
 }

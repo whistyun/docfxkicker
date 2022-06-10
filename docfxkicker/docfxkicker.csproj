@@ -1,10 +1,24 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <PackageId>docfxkicker</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>whistyun</Authors>
+    <PackageProjectUrl>https://github.com/whistyun/docfxkicker</PackageProjectUrl>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright © 2021 whistyun</Copyright>
+    <PackageTags>dotnet documentation docfx</PackageTags>
+
     <OutputType>Exe</OutputType>
     <TargetFramework>net472</TargetFramework>
-    <LangVersion>8</LangVersion>
+    <LangVersion>9</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="docfxkicker.json" />
+    <None Remove="helpdoc.txt" />
+    <EmbeddedResource Include="docfxkicker.json" />
+    <EmbeddedResource Include="helpdoc.txt" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
@@ -14,6 +28,21 @@
   <ItemGroup>
     <ProjectReference Include="..\docfxkicker.plugin\docfxkicker.plugin.csproj" />
     <ProjectReference Include="..\NuGetHelper\NuGetHelper.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 
 </Project>

@@ -1,100 +1,104 @@
 ﻿using docfxkicker.plugin;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using NuGet.Packaging.Core;
-using NuGetHelper;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace docfxkicker
 {
     class Program
     {
-        private string Repository = URepository.NuGetOrgUrl;
-        private static Dictionary<string, ISubCommand> _commandMap = new Dictionary<string, ISubCommand>();
-
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
-            var docfxConsole = PluginLoader.SetupDocfxConsole();
-            var docfxExe = Path.Combine(Path.GetDirectoryName(docfxConsole.Path), "tools", "docfx.exe");
-
-            var jsonFilepath = Path.GetFullPath(args[0]);
-            var baseDirectory = Path.GetDirectoryName(jsonFilepath);
-            var obj = JsonParser.FromFile(args[0]);
-
-            int stage = 0;
-            foreach (var config in obj)
+            if (args.Length == 0)
             {
-                if (config is KickerConfigNode kicker)
-                {
-                    string command = kicker.ConfigNode.Name;
-                    JToken kickerConfig = kicker.ConfigNode.Value;
+                Console.Error.WriteLine($"No subcommand input!");
+                PrintHelpDoc();
+                return -1;
+            }
 
-                    if (command == "@repository")
-                    {
+            var options = args.Skip(1).ToArray();
 
-                    }
-                    else if (command == "@plugin")
-                    {
-                        Pugin(kickerConfig);
-                    }
-                    else if (_commandMap.TryGetValue(command, out var cmd))
-                    {
-                        cmd.Exec(kickerConfig as JObject, baseDirectory);
-                    }
-                    else
-                    {
-                        Debug.Print($"unknown command '{command}'");
-                    }
-                }
-                if (config is DocFxConfigNode docfx)
-                {
-                    var jsonConfig = Path.Combine(baseDirectory, $".docfx_{stage++}.json");
+            switch (args[0])
+            {
+                case "init":
+                    return Init(options);
 
-                    using (var stream = new FileStream(jsonConfig, FileMode.Create))
-                    using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
-                    using (var jwriter = new JsonTextWriter(writer))
-                    {
-                        jwriter.Formatting = Formatting.Indented;
-                        docfx.ConfigObject.WriteTo(jwriter);
-                    }
+                case "build":
+                    return Build(options);
 
-                    Process.Start(docfxExe, jsonConfig).WaitForExit();
-                }
+                default:
+                    Console.Error.WriteLine($"Unknown subcommand!");
+                    PrintHelpDoc();
+                    return -1;
             }
         }
 
-
-        static void Pugin(JToken token)
+        static void PrintHelpDoc()
         {
-            Dictionary<string, string> ids = token switch
+            Console.WriteLine(LoadResource("helpdoc.txt"));
+        }
+
+        static int Init(string[] args)
+        {
+            if (args.Length != 1)
             {
-                JObject jobj
-                    => jobj.Properties().ToDictionary(p => p.Name, p => p.Value.ToString()),
-
-                JArray array
-                    => array.ToDictionary(t => t.ToString(), t => default(String)),
-
-                JValue val when val.Type == JTokenType.String
-                    => new Dictionary<string, string>() { { (string)val.Value, null } },
-
-                _ => throw new FormatException(""),
-            };
-
-            foreach (var command in ids.SelectMany(idSet => PluginLoader.Load(idSet.Key, idSet.Value)))
-            {
-                var commandName = command.CommandName;
-
-                if (!commandName.StartsWith("@"))
-                    commandName = "@" + commandName;
-
-                _commandMap[commandName] = command;
+                Console.Error.WriteLine("Paremeter count do not match!");
+                PrintHelpDoc();
+                return -1;
             }
+
+            var projectDir = args[0];
+            var projectName = Directory.GetFiles(projectDir, "*.??proj")
+                                       .Select(path => Path.GetFileNameWithoutExtension(path))
+                                       .FirstOrDefault()
+                              ?? Path.GetDirectoryName(Path.Combine(projectDir, "dummy"));
+
+
+            var configContent = LoadResource("docfxkicker.json").Replace("%projectName%", projectName);
+
+            File.WriteAllText(Path.Combine(projectDir, "docfxkicker.json"), configContent);
+
+            return 0;
+        }
+
+        static int Build(string[] args)
+        {
+            if (args.Length != 4)
+            {
+                Console.Error.WriteLine("Paremeter count do not match!");
+                PrintHelpDoc();
+                return -1;
+            }
+
+            var docfxConsole = PluginLoader.SetupDocfxConsole();
+            if (docfxConsole is null)
+            {
+                throw new Exception("Failed to load docfx.console");
+            }
+            var docfxExe = Path.Combine(Path.GetDirectoryName(docfxConsole.Path), "tools", "docfx.exe");
+
+
+            var option = new KickerOption(
+                toolPrefix: args[0],
+                docfxExe: docfxExe,
+                configFilePath: args[1],
+                logFilePath: args[2],
+                templateDirectory: args[3]);
+
+            var logger = new Logger(option.LogFilePath);
+            var process = new KickerProcess(option);
+            process.Execute(logger);
+
+            return 0;
+        }
+
+
+        static string LoadResource(string resourceName)
+        {
+            var assembly = typeof(Program).Assembly;
+            var stream = assembly.GetManifestResourceStream($"docfxkicker.{resourceName}");
+            var streamReader = new StreamReader(stream);
+            return streamReader.ReadToEnd();
         }
     }
 }

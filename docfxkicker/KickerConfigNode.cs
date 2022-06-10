@@ -13,5 +13,10 @@ namespace docfxkicker
         {
             ConfigNode = prop;
         }
+
+        public override ConfigNode DeepClone()
+        {
+            return new KickerConfigNode((JProperty)ConfigNode.DeepClone());
+        }
     }
 }
